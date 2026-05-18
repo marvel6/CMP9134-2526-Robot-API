@@ -1,0 +1,14 @@
+.vscode
+.env
+
+# Backend (Node.js)
+backend/node_modules/
+backend/dist/
+backend/.tsbuildinfo
+backend/*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
