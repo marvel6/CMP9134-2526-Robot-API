@@ -5,7 +5,7 @@ import { config } from './config';
 import { waitForMongo, closeMongo } from './db/connection';
 import { ensureDefaultCommander } from './db/seed';
 import { waitForRedis, closeRedis } from './cache/redis';
-import { socketManager } from './socket/manager';
+import { connect, disconnect } from './socket/manager';
 import { startRobotTelemetry, stopRobotTelemetry } from './modules/robot/robot.gateway';
 
 async function main(): Promise<void> {
@@ -40,10 +40,10 @@ async function main(): Promise<void> {
   });
 
   wss.on('connection', (ws) => {
-    const id = socketManager.connect('robot', ws);
+    const id = connect('robot', ws);
 
     ws.on('close', () => {
-      socketManager.disconnect('robot', id);
+      disconnect('robot', id);
     });
 
     ws.on('message', () => undefined);

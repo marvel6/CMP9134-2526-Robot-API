@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { config } from '../../config';
-import { socketManager, WsMessageType } from '../../socket/manager';
+import { broadcast, WsMessageType } from '../../socket/manager';
 
 function toWebSocketUrl(url: string): string {
   if (url.startsWith('https://')) return url.replace(/^https:\/\//, 'wss://');
@@ -36,7 +36,7 @@ async function connectLoop(): Promise<void> {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Telemetry error:', err instanceof Error ? err.message : err);
-      socketManager.broadcast('robot', { type: WsMessageType.ERROR, data: null });
+      broadcast('robot', { type: WsMessageType.ERROR, data: null });
     }
     await sleep(1_000);
   }
@@ -55,7 +55,7 @@ function runConnection(): Promise<void> {
     upstream.on('message', (raw) => {
       try {
         const parsed = JSON.parse(raw.toString()) as TelemetryDataPayload;
-        socketManager.broadcast('robot', {
+        broadcast('robot', {
           type: WsMessageType.TELEMETRY,
           data: parsed,
         });
