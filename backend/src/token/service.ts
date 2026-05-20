@@ -1,4 +1,3 @@
-import { Op } from 'sequelize';
 import { RefreshToken } from '../db/models/RefreshToken';
 import { User } from '../db/models/User';
 import { config } from '../config';
@@ -30,11 +29,10 @@ export async function generateAuthTokens(userId: string): Promise<TokenSchema> {
 }
 
 export async function revokeRefreshToken(refreshTokenValue: string): Promise<void> {
-  const record = await RefreshToken.findOne({ where: { token: refreshTokenValue } });
-  if (record && !record.is_blacklisted) {
-    record.is_blacklisted = true;
-    await record.save();
-  }
+  await RefreshToken.updateOne(
+    { token: refreshTokenValue, is_blacklisted: false },
+    { $set: { is_blacklisted: true } },
+  );
 }
 
 export async function refreshTokens(refreshTokenValue: string): Promise<TokenSchema> {
@@ -44,12 +42,12 @@ export async function refreshTokens(refreshTokenValue: string): Promise<TokenSch
     throw new UnauthorizedException('invalid or expired token');
   }
 
-  const user = await User.findByPk(claims.sub);
+  const user = await User.findById(claims.sub);
   if (!user) {
     throw new UnauthorizedException('invalid or expired token');
   }
 
-  const record = await RefreshToken.findOne({ where: { token: refreshTokenValue } });
+  const record = await RefreshToken.findOne({ token: refreshTokenValue });
   if (!record) {
     throw new UnauthorizedException('invalid or expired token');
   }
@@ -67,13 +65,10 @@ export async function refreshTokens(refreshTokenValue: string): Promise<TokenSch
     await record.save();
   }
 
-  return generateAuthTokens(user.id);
+  return generateAuthTokens(user._id.toString());
 }
 
-// Periodically clean up clearly expired tokens so the table doesn't grow unbounded.
 export async function purgeExpiredRefreshTokens(): Promise<number> {
-  const result = await RefreshToken.destroy({
-    where: { expires_at: { [Op.lt]: new Date() } },
-  });
-  return result;
+  const result = await RefreshToken.deleteMany({ expires_at: { $lt: new Date() } });
+  return result.deletedCount ?? 0;
 }

@@ -1,65 +1,38 @@
-import {
-  DataTypes,
-  Model,
-  type InferAttributes,
-  type InferCreationAttributes,
-  type CreationOptional,
-} from 'sequelize';
-import { sequelize } from '../sequelize';
-import { User } from './User';
+import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 
 export type ActionEnum = 'COMMAND' | 'LOGIN' | 'RESET_ROBOT';
 
-export class AuditLog extends Model<InferAttributes<AuditLog>, InferCreationAttributes<AuditLog>> {
-  declare id: CreationOptional<string>;
-  declare action: ActionEnum;
-  declare navigation_direction: string | null;
-  declare user_id: string;
-  declare created_at: CreationOptional<Date>;
-  declare updated_at: CreationOptional<Date>;
+export interface AuditLogDoc {
+  action: ActionEnum;
+  navigation_direction: string | null;
+  user_id: Types.ObjectId;
+  created_at: Date;
+  updated_at: Date;
 }
 
-AuditLog.init(
+export type AuditLogHydrated = HydratedDocument<AuditLogDoc>;
+
+const auditLogSchema = new Schema<AuditLogDoc>(
   {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    action: {
-      type: DataTypes.ENUM('COMMAND', 'LOGIN', 'RESET_ROBOT'),
-      allowNull: false,
-    },
-    navigation_direction: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    user_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: { model: 'user', key: 'id' },
-      onDelete: 'CASCADE',
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+    action: { type: String, enum: ['COMMAND', 'LOGIN', 'RESET_ROBOT'], required: true, index: true },
+    navigation_direction: { type: String, default: null },
+    user_id: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   },
   {
-    sequelize,
-    tableName: 'auditlog',
-    modelName: 'AuditLog',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
+    collection: 'audit_logs',
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    toJSON: { virtuals: true, versionKey: false },
+    toObject: { virtuals: true, versionKey: false },
   },
 );
 
-User.hasMany(AuditLog, { foreignKey: 'user_id', as: 'audit_logs', onDelete: 'CASCADE' });
-AuditLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+auditLogSchema.virtual('id').get(function (
+  this: AuditLogDoc & { _id: Types.ObjectId },
+) {
+  return this._id.toString();
+});
+
+// Common dashboard query is "most recent first" — keep that fast.
+auditLogSchema.index({ created_at: -1 });
+
+export const AuditLog = model<AuditLogDoc>('AuditLog', auditLogSchema);

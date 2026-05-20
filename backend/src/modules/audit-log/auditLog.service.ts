@@ -10,8 +10,8 @@ export interface CreateAuditLogInput {
 export async function createAuditLog(
   userId: string,
   input: CreateAuditLogInput,
-): Promise<AuditLog> {
-  return AuditLog.create({
+): Promise<void> {
+  await AuditLog.create({
     action: input.action,
     navigation_direction: input.navigation_direction ?? null,
     user_id: userId,
@@ -33,6 +33,15 @@ export interface AuditLogResponseEntry {
   user: AuditLogResponseUser;
 }
 
+interface RawAuditLog {
+  _id: { toString(): string };
+  action: ActionEnum;
+  navigation_direction: string | null;
+  user_id: { toString(): string };
+  created_at: Date;
+  updated_at: Date;
+}
+
 export async function getAllAuditLogs(
   page: number,
   limit: number,
@@ -40,25 +49,37 @@ export async function getAllAuditLogs(
   const result = await paginate(AuditLog, {
     page,
     limit,
-    findOptions: {
-      include: [{ model: User, as: 'user', required: false }],
-      order: [['created_at', 'DESC']],
-    },
+    sort: { created_at: -1 },
   });
 
-  const mapped: AuditLogResponseEntry[] = result.results.map((entry) => {
-    const user = (entry as unknown as { user?: User }).user ?? null;
+  const rows = result.results as RawAuditLog[];
+  const userIds = Array.from(
+    new Set(rows.map((row) => row.user_id?.toString()).filter(Boolean) as string[]),
+  );
+
+  const users = userIds.length
+    ? await User.find({ _id: { $in: userIds } })
+        .select({ _id: 1, full_name: 1 })
+        .lean()
+    : [];
+  const userById = new Map<string, { full_name: string | null }>();
+  for (const u of users) {
+    userById.set((u._id as { toString(): string }).toString(), {
+      full_name: (u as { full_name?: string | null }).full_name ?? null,
+    });
+  }
+
+  const mapped: AuditLogResponseEntry[] = rows.map((row) => {
+    const userId = row.user_id?.toString() ?? '';
+    const populated = userById.get(userId);
     return {
-      id: entry.id,
-      created_at: entry.created_at.toISOString(),
-      updated_at: entry.updated_at.toISOString(),
-      action: entry.action,
-      navigation_direction: entry.navigation_direction,
-      user_id: entry.user_id,
-      user: {
-        id: entry.user_id,
-        full_name: user?.full_name ?? null,
-      },
+      id: row._id.toString(),
+      created_at: row.created_at.toISOString(),
+      updated_at: row.updated_at.toISOString(),
+      action: row.action,
+      navigation_direction: row.navigation_direction,
+      user_id: userId,
+      user: { id: userId, full_name: populated?.full_name ?? null },
     };
   });
 

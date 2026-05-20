@@ -116,6 +116,44 @@ Purpose: Development assistance for CMP9134 Robot Management System
 - Light UI polish: refreshed accent palette, soft pulse on the "Telemetry live" dot, hover glow on nav buttons, brand chip in dashboard header.
 **Verified:** `npx tsc -p tsconfig.json` passes in `backend/`; `npx vite build` passes in `frontend/`; routes and response shapes hand-compared with the original FastAPI routers. `docker-compose.yaml` now builds the backend image from `./backend`.
 
+### Entry 12
+**Task Category:** Database migration + auth fix + login redesign
+**Prompt Summary:** Operator reported auth was effectively unusable (no way to
+become a COMMANDER), asked to swap the database to MongoDB, harden the
+permission model, seed a default commander, and redesign the login page so it
+feels distinct from registration.
+**Why:** Without a seeded COMMANDER nobody could ever exercise the
+`move/reset/audit-log/admin` endpoints. MongoDB was preferred for simpler ops.
+The original login page was visually similar to the register page.
+**Outcome:** Accepted.
+- **Database:** Replaced Sequelize/Postgres with Mongoose 8 / MongoDB 7.
+  Collections `users`, `refresh_tokens`, `audit_logs`. ObjectId primary keys
+  with virtual `id` getters; `created_at` / `updated_at` retained.
+  `docker-compose.yaml` now provisions a `mongo:7` service with a named volume.
+- **Default commander seed:** New `src/db/seed.ts`. On boot the API ensures the
+  account from `DEFAULT_COMMANDER_EMAIL` exists as `COMMANDER`. If the email
+  exists but isn't COMMANDER it is promoted (password never overwritten).
+- **Permissions:** `requirePermission` middleware enforces COMMANDER on
+  `/v1/audit-log`, `/v1/admin/*`. Robot `move` / `reset` services now return
+  `403 ForbiddenException` (was `400 BadRequest`) when invoked by a VIEWER.
+  Added `GET /v1/admin/users` so COMMANDERs can see who exists when promoting.
+- **Auth fix:** Refresh tokens are now set by the server as an `HttpOnly`,
+  `SameSite=Lax` cookie on `/login`, `/register`, `/refresh-token`. Logout
+  clears that cookie. Refresh endpoint also accepts the token in the request
+  body as a fallback. Frontend sets `withCredentials` so the cookie flows
+  through the nginx proxy automatically. Both `refresh-token` and `logout`
+  now work end-to-end.
+- **Login redesign:** Two-column layout. Left panel (lg+ only) shows an
+  animated SVG radar with sweeping beam, app branding, and a mock system
+  status block. Right panel is a compact form using a new `auth-input-compact`
+  style. Added a "Default commander" hint card with a one-click "Fill these
+  credentials" button so the operator can sign in immediately. Register page
+  now states up front that new accounts start as VIEWER.
+**Verified:** `npx tsc -p tsconfig.json` passes in `backend/`. `npm run build`
+passes in `frontend/`. `ReadLints` clean on touched files. Default commander
+credentials match between `docker-compose.yaml` env, `.env.example`, and the
+hint shown in the UI.
+
 ## Notes
 - The original FastAPI service in `app/` and its supporting Python files
   (`migrations/`, `settings/`, `tests/`, `alembic.ini`, `pyproject.toml`,
@@ -124,3 +162,5 @@ Purpose: Development assistance for CMP9134 Robot Management System
   port in `backend/` reached feature parity.
 - Robot navigation logic and JWT auth design were written manually first in the
   Python codebase and then ported (not AI-generated from scratch).
+- Backend persistence layer is MongoDB (Mongoose) as of Entry 12 — earlier
+  Sequelize/Postgres references in older entries are historical.

@@ -3,30 +3,88 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loginV1 } from '../api/v1'
 import { useAuth } from '../context/AuthContext'
 
-function LogoMark() {
+function RadarVisual() {
   return (
-    <div className="relative flex items-center justify-center w-16 h-16 mx-auto mb-5">
-      {/* Ping ring */}
-      <span className="ping-slow absolute inline-flex w-16 h-16 rounded-full bg-accent/20" />
-      {/* Outer ring */}
-      <div className="absolute w-16 h-16 rounded-full border border-accent/30" />
-      {/* Inner ring */}
-      <div className="absolute w-10 h-10 rounded-full border border-accent/50" />
-      {/* SVG icon */}
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
-        className="text-accent relative z-10">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-        <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M19.07 4.93l-2.83 2.83M7.76 16.24l-2.83 2.83" />
-      </svg>
+    <svg
+      viewBox="0 0 220 220"
+      className="w-[min(420px,75%)] aspect-square"
+      role="img"
+      aria-label="Stylised robot radar"
+    >
+      <defs>
+        <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(124,109,255,0.35)" />
+          <stop offset="60%" stopColor="rgba(124,109,255,0.08)" />
+          <stop offset="100%" stopColor="rgba(124,109,255,0)" />
+        </radialGradient>
+        <linearGradient id="sweep" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="rgba(124,109,255,0)" />
+          <stop offset="100%" stopColor="rgba(124,109,255,0.55)" />
+        </linearGradient>
+      </defs>
+
+      <circle cx="110" cy="110" r="100" fill="url(#radarGlow)" />
+
+      {[35, 60, 85, 105].map((r) => (
+        <circle
+          key={r}
+          cx="110"
+          cy="110"
+          r={r}
+          fill="none"
+          stroke="rgba(124,109,255,0.35)"
+          strokeWidth="1"
+          className="radar-ring"
+          style={{ animationDelay: `${r * 0.02}s` }}
+        />
+      ))}
+
+      {/* axes */}
+      <line x1="10" y1="110" x2="210" y2="110" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+      <line x1="110" y1="10" x2="110" y2="210" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+
+      {/* rotating sweep */}
+      <g className="radar-sweep">
+        <path d="M 110 110 L 210 110 A 100 100 0 0 0 110 10 Z" fill="url(#sweep)" />
+      </g>
+
+      {/* sample blips */}
+      <circle cx="148" cy="78"  r="2.5" fill="#2ee5a0" />
+      <circle cx="74"  cy="142" r="2.5" fill="#7c6dff" />
+      <circle cx="162" cy="138" r="2.5" fill="#7c6dff" />
+
+      {/* center robot */}
+      <circle cx="110" cy="110" r="6" fill="#7c6dff" />
+      <circle cx="110" cy="110" r="11" fill="none" stroke="rgba(124,109,255,0.55)" strokeWidth="1" />
+    </svg>
+  )
+}
+
+function StatusLine({ label, value, dot }: { label: string; value: string; dot: 'live' | 'idle' }) {
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      <span
+        className={`inline-block size-2 rounded-full ${
+          dot === 'live'
+            ? 'bg-emerald-400 pulse-live shadow-[0_0_6px_rgba(46,229,160,0.7)]'
+            : 'bg-white/30'
+        }`}
+        aria-hidden
+      />
+      <span className="uppercase tracking-[0.18em] text-muted/80 font-medium min-w-[120px]">
+        {label}
+      </span>
+      <span className="text-white/85 font-mono">{value}</span>
     </div>
   )
 }
 
+const DEFAULT_COMMANDER_EMAIL = 'commander@robocontrol.local'
+const DEFAULT_COMMANDER_PASSWORD = 'commander123'
+
 export function Login() {
   const navigate = useNavigate()
-  const { setTokens, user } = useAuth()
+  const { setTokens } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,9 +92,9 @@ export function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (user) {
-    navigate('/dashboard', { replace: true })
-    return null
+  function fillDefaults() {
+    setEmail(DEFAULT_COMMANDER_EMAIL)
+    setPassword(DEFAULT_COMMANDER_PASSWORD)
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -55,38 +113,76 @@ export function Login() {
   }
 
   return (
-    <main className="auth-bg min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-[380px]">
+    <main className="auth-shell grid lg:grid-cols-[1.05fr_1fr] min-h-screen">
+      {/* ── Left: visual / brand panel (lg+ only) ─────────────────── */}
+      <aside className="auth-visual hidden lg:flex flex-col justify-between p-12 xl:p-16 relative">
+        <header className="flex items-center gap-3 relative z-10">
+          <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/15 border border-accent/30">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bcb5ff"
+              strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+              <path d="M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M19.07 4.93l-2.83 2.83M7.76 16.24l-2.83 2.83" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-white font-semibold tracking-tight">RoboControl</p>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-muted/70">Mission Control</p>
+          </div>
+        </header>
 
-        {/* Logo + title */}
-        <div className="text-center" style={{ marginBottom: '2rem' }}>
-          <LogoMark />
-          <h1 className="text-[1.6rem] font-bold tracking-tight text-white leading-tight">
-            RoboControl
-          </h1>
+        <div className="flex flex-1 items-center justify-center relative z-10">
+          <RadarVisual />
         </div>
 
-        {/* Card - extra top padding for space before Operator Login */}
-        <div className="auth-card rounded-2xl" style={{ paddingTop: '2rem', paddingBottom: '1.75rem', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}>
+        <footer className="relative z-10 flex flex-col gap-3 max-w-md">
+          <h2 className="text-white text-2xl font-semibold leading-tight tracking-tight">
+            Real-time control surface
+            <br />
+            <span className="text-muted/80 font-normal">for your robot fleet.</span>
+          </h2>
+          <div className="mt-6 flex flex-col gap-2.5 border-t border-white/5 pt-5">
+            <StatusLine label="Robot link"      value="ROBOT-01 · online"   dot="live" />
+            <StatusLine label="Telemetry"       value="streaming"           dot="live" />
+            <StatusLine label="Last commander"  value="—"                   dot="idle" />
+          </div>
+          <p className="mt-6 text-[10px] tracking-[0.22em] uppercase text-muted/30">
+            CMP9134 · v1.0
+          </p>
+        </footer>
+      </aside>
 
-          {/* Divider label */}
-          <div className="flex items-center gap-3 mb-7">
-            <div className="flex-1 h-px bg-border/60" />
-            <span className="text-[10px] tracking-[0.15em] uppercase text-muted/60">
-              Operator Login
+      {/* ── Right: form panel ─────────────────────────────────────── */}
+      <section className="flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-[400px]">
+          {/* Mobile branding (lg- hidden on the left panel) */}
+          <div className="lg:hidden flex items-center gap-3 mb-10">
+            <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/15 border border-accent/30">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#bcb5ff"
+                strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+              </svg>
             </span>
-            <div className="flex-1 h-px bg-border/60" />
+            <div>
+              <p className="text-white font-semibold tracking-tight">RoboControl</p>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-muted/70">Mission Control</p>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6" style={{ paddingBottom: '1.25rem' }}>
+          <div className="mb-8">
+            <h1 className="text-white text-2xl font-semibold tracking-tight">
+              Welcome back, operator
+            </h1>
+            <p className="text-muted/80 text-sm mt-1.5">
+              Sign in with your credentials to take control of the robot.
+            </p>
+          </div>
 
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
             {/* Email */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase text-muted/80">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
-                  <rect x="2" y="4" width="20" height="16" rx="2"/>
-                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-                </svg>
+              <label htmlFor="email" className="text-[11px] font-semibold tracking-[0.14em] uppercase text-muted/70">
                 Email
               </label>
               <input
@@ -96,70 +192,52 @@ export function Login() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="auth-input w-full px-4 py-3.5 rounded-xl text-sm font-mono tracking-wide"
+                className="auth-input-compact w-full px-4 py-3 rounded-lg text-sm font-mono tracking-wide"
                 required
               />
             </div>
 
             {/* Password */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="password" className="flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase text-muted/80">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-60">
-                  <rect x="3" y="11" width="18" height="11" rx="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••••••"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="auth-input w-full px-4 py-3.5 pr-12 rounded-xl text-sm"
-                  required
-                />
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-[11px] font-semibold tracking-[0.14em] uppercase text-muted/70">
+                  Password
+                </label>
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded text-muted/70 hover:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={-1}
+                  className="text-[11px] text-muted/60 hover:text-accent transition-colors"
                 >
-                  {showPassword ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  )}
+                  {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••••••"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="auth-input-compact w-full px-4 py-3 rounded-lg text-sm"
+                required
+              />
             </div>
 
-            {/* Error */}
             {error && (
-              <div className="flex items-start gap-2.5 text-sm text-danger bg-danger/8 border border-danger/20 rounded-xl px-4 py-3">
+              <div className="flex items-start gap-2.5 text-sm text-danger bg-danger/8 border border-danger/20 rounded-lg px-3.5 py-3">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-px flex-shrink-0">
                   <circle cx="12" cy="12" r="10"/>
                   <line x1="12" x2="12" y1="8" y2="12"/>
                   <line x1="12" x2="12.01" y1="16" y2="16"/>
                 </svg>
-                {error}
+                <span className="leading-tight">{error}</span>
               </div>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="auth-btn-primary mt-3 w-full py-5 rounded-xl text-white text-sm font-bold tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
+              className="auth-btn-primary mt-2 w-full py-3.5 rounded-lg text-white text-sm font-semibold tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -169,24 +247,39 @@ export function Login() {
                   </svg>
                   Authenticating…
                 </span>
-              ) : 'Login'}
+              ) : 'Sign in'}
             </button>
           </form>
+
+          {/* Default commander hint (dev convenience) */}
+          <div className="mt-6 rounded-lg border border-accent/15 bg-accent/5 px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-accent/80 font-semibold mb-1.5">
+              Default commander
+            </p>
+            <p className="text-xs text-muted/85 leading-relaxed">
+              On first boot the API creates a COMMANDER account so you can sign in
+              immediately. Use{' '}
+              <span className="font-mono text-white/85">{DEFAULT_COMMANDER_EMAIL}</span>{' '}
+              /{' '}
+              <span className="font-mono text-white/85">{DEFAULT_COMMANDER_PASSWORD}</span>.
+            </p>
+            <button
+              type="button"
+              onClick={fillDefaults}
+              className="mt-2.5 text-[11px] font-medium text-accent hover:text-accent/80 transition-colors"
+            >
+              Fill these credentials →
+            </button>
+          </div>
+
+          <p className="mt-8 text-center text-muted/70 text-xs tracking-wide">
+            No account yet?{' '}
+            <Link to="/register" className="text-accent font-semibold hover:text-accent/80 transition-colors">
+              Register as a viewer
+            </Link>
+          </p>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-muted/70 text-xs tracking-wide" style={{ marginTop: '1.5rem' }}>
-          No account?{' '}
-          <Link to="/register" className="text-accent font-semibold hover:text-accent/80 transition-colors">
-            Register as operator
-          </Link>
-        </p>
-
-        {/* Bottom watermark */}
-        <p className="text-center mt-8 text-[10px] tracking-[0.2em] uppercase text-muted/25">
-          CMP9134 · Mission Control v1.0
-        </p>
-      </div>
+      </section>
     </main>
   )
 }

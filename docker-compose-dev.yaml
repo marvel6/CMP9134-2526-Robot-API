@@ -1,26 +1,22 @@
 services:
-  database:
-    image: postgres:17-alpine
+  mongo:
+    image: mongo:7
+    command: ["mongod", "--bind_ip_all"]
     ports:
-      - "5433:5432"
+      - "27017:27017"
     volumes:
-      - robot_postgres_database:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: db
+      - robot_mongo_data:/data/db
 
   redis:
     image: redis:8.6.1-alpine
     ports:
       - "6379:6379"
-  
+
   robot:
     container_name: cmp9134_2526_robot
     image: ghcr.io/francescodelduchetto/cmp9134_2526_robotsim:latest
     ports:
       - "5555:5000"
-    
-volumes:
-  robot_postgres_database:
 
+volumes:
+  robot_mongo_data:

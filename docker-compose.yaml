@@ -8,13 +8,10 @@ services:
         - VITE_API_BASE_URL=http://backend:8000
     ports:
       - "8080:80"
-
     environment:
       BACKEND_URL: http://backend:8000/
-
     networks:
       - robot_network
-
     depends_on:
       - backend
 
@@ -24,46 +21,43 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8000
-      JWT_SECRET_KEY: secret
-      DATABASE_URL: postgresql://user:pass@database:5432/db
+      JWT_SECRET_KEY: please-change-me-in-production
+      MONGODB_URI: mongodb://mongo:27017/robocontrol
       REDIS_URL: redis://redis:6379/0
       BASE_ROBOT_API_URL: http://robot:5000
       CORS_ORIGINS: "*"
-
+      # Created on first boot if it doesn't exist. Use this account to log
+      # in as a COMMANDER and start moving the robot.
+      DEFAULT_COMMANDER_EMAIL: commander@robocontrol.local
+      DEFAULT_COMMANDER_PASSWORD: commander123
+      DEFAULT_COMMANDER_NAME: "Default Commander"
     networks:
       - robot_network
-
     depends_on:
-      - database
+      - mongo
       - redis
       - robot
-  
-  database:
-    image: postgres:17-alpine
-    volumes:
-      - robot_postgres_database:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: db
 
+  mongo:
+    image: mongo:7
+    container_name: robot-mongo
+    command: ["mongod", "--bind_ip_all"]
+    volumes:
+      - robot_mongo_data:/data/db
     networks:
       - robot_network
 
   redis:
     image: redis:8.6.1-alpine
-    ports:
-      - "6379:6379"
-
+    container_name: robot-redis
     networks:
       - robot_network
-  
+
   robot:
     container_name: cmp9134_2526_robot
     image: ghcr.io/francescodelduchetto/cmp9134_2526_robotsim:latest
     ports:
       - "5555:5000"
-    
     networks:
       - robot_network
 
@@ -71,5 +65,4 @@ networks:
   robot_network:
 
 volumes:
-  robot_postgres_database:
-
+  robot_mongo_data:

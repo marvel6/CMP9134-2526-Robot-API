@@ -1,4 +1,4 @@
-import type { FindOptions, ModelStatic, Model } from 'sequelize';
+import type { FilterQuery, Model, PopulateOptions, SortOrder } from 'mongoose';
 
 export interface PaginationQuery {
   page?: number | string;
@@ -32,38 +32,41 @@ export function parsePagination(query: PaginationQuery): { page: number; limit: 
   };
 }
 
-export async function paginate<TModel extends Model>(
-  model: ModelStatic<TModel>,
-  options: {
-    page: number;
-    limit: number;
-    findOptions?: FindOptions;
-  },
-): Promise<PaginatorResult<TModel>> {
-  const { page, limit, findOptions = {} } = options;
+export interface PaginateOptions<T> {
+  page: number;
+  limit: number;
+  filter?: FilterQuery<T>;
+  sort?: Record<string, SortOrder>;
+  populate?: PopulateOptions | (string | PopulateOptions)[];
+}
+
+/**
+ * Simple offset/limit pagination wrapper for Mongoose models.
+ *
+ * Returns lean documents (plain objects) — callers map them into response
+ * shapes themselves, so the result type is loose by design.
+ */
+export async function paginate<T>(
+  model: Model<T>,
+  options: PaginateOptions<T>,
+): Promise<PaginatorResult<unknown>> {
+  const { page, limit, filter = {}, sort = { created_at: -1 }, populate } = options;
   const offset = (page - 1) * limit;
 
-  const result = await model.findAndCountAll({
-    ...findOptions,
-    order: findOptions.order ?? [['created_at', 'DESC']],
-    offset,
-    limit,
-    distinct: true,
-  });
+  const query = model
+    .find(filter)
+    .sort(sort as Record<string, SortOrder>)
+    .skip(offset)
+    .limit(limit);
 
-  const rows = result.rows;
-  // `count` is `number` for non-grouped queries; defensively handle the
-  // grouped-count case (array of `{ ...group, count }` objects) too.
-  const rawCount: unknown = result.count;
-  let total = 0;
-  if (typeof rawCount === 'number') {
-    total = rawCount;
-  } else if (Array.isArray(rawCount)) {
-    total = (rawCount as Array<{ count?: number }>).reduce(
-      (sum, row) => sum + (typeof row.count === 'number' ? row.count : 0),
-      0,
-    );
+  if (populate) {
+    query.populate(populate as PopulateOptions);
   }
+
+  const [rows, total] = await Promise.all([
+    query.lean({ virtuals: true }).exec(),
+    model.countDocuments(filter).exec(),
+  ]);
 
   const lastPage = Math.max(1, Math.ceil(total / limit));
 

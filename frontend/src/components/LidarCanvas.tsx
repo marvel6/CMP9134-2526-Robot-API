@@ -3,12 +3,35 @@ import { useEffect, useRef } from 'react'
 interface LidarCanvasProps {
   lidar: number[]
   size?: number
+  theme?: 'dark' | 'light'
 }
 
 const MAX_RANGE = 10
 const SWEEP_DURATION_MS = 2500
 
-export function LidarCanvas({ lidar, size = 220 }: LidarCanvasProps) {
+const PALETTES = {
+  dark: {
+    bg: '#0f1117',
+    ring: 'rgba(108, 99, 255, 0.15)',
+    label: 'rgba(139, 143, 168, 0.5)',
+    center: '#6c63ff',
+    sweep: 'rgba(108, 99, 255, 0.6)',
+    obstacle: '#ff4757',
+    border: 'border-white/10',
+  },
+  light: {
+    bg: '#f1f5f9',
+    ring: 'rgba(91, 79, 214, 0.2)',
+    label: '#94a3b8',
+    center: '#5b4fd6',
+    sweep: 'rgba(91, 79, 214, 0.45)',
+    obstacle: '#e11d48',
+    border: 'border-slate-200',
+  },
+} as const
+
+export function LidarCanvas({ lidar, size = 220, theme = 'dark' }: LidarCanvasProps) {
+  const palette = PALETTES[theme]
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sweepAngleRef = useRef(0)
   const animationFrameRef = useRef<number>(0)
@@ -31,10 +54,10 @@ export function LidarCanvas({ lidar, size = 220 }: LidarCanvasProps) {
       lastTimeRef.current = timestamp
       sweepAngleRef.current = (sweepAngleRef.current + (delta / SWEEP_DURATION_MS) * 360) % 360
 
-      ctx.fillStyle = '#0f1117'
+      ctx.fillStyle = palette.bg
       ctx.fillRect(0, 0, size, size)
 
-      ctx.strokeStyle = 'rgba(108, 99, 255, 0.15)'
+      ctx.strokeStyle = palette.ring
       ctx.lineWidth = 1
       for (let r = 2; r <= 8; r += 2) {
         ctx.beginPath()
@@ -42,7 +65,7 @@ export function LidarCanvas({ lidar, size = 220 }: LidarCanvasProps) {
         ctx.stroke()
       }
 
-      ctx.fillStyle = 'rgba(139, 143, 168, 0.5)'
+      ctx.fillStyle = palette.label
       ctx.font = '9px Inter, sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -51,13 +74,13 @@ export function LidarCanvas({ lidar, size = 220 }: LidarCanvasProps) {
       ctx.fillText('W', 10, center)
       ctx.fillText('E', size - 10, center)
 
-      ctx.fillStyle = '#6c63ff'
+      ctx.fillStyle = palette.center
       ctx.beginPath()
       ctx.arc(center, center, 5, 0, Math.PI * 2)
       ctx.fill()
 
       const sweepRad = (sweepAngleRef.current * Math.PI) / 180
-      ctx.strokeStyle = 'rgba(108, 99, 255, 0.6)'
+      ctx.strokeStyle = palette.sweep
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(center, center)
@@ -67,7 +90,7 @@ export function LidarCanvas({ lidar, size = 220 }: LidarCanvasProps) {
       )
       ctx.stroke()
 
-      ctx.fillStyle = '#ff4757'
+      ctx.fillStyle = palette.obstacle
       for (let deg = 0; deg < lidar.length && deg < 360; deg++) {
         const dist = lidar[deg]
         if (dist < MAX_RANGE) {
@@ -89,15 +112,15 @@ export function LidarCanvas({ lidar, size = 220 }: LidarCanvasProps) {
     return () => {
       cancelAnimationFrame(animationFrameRef.current)
     }
-  }, [lidar, size])
+  }, [lidar, size, palette])
 
   return (
     <canvas
       ref={canvasRef}
       width={size}
       height={size}
-      className="rounded-lg border border-white/10"
-      style={{ background: '#0f1117' }}
+      className={`rounded-lg border ${palette.border}`}
+      style={{ background: palette.bg }}
     />
   )
 }

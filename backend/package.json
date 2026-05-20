@@ -1,7 +1,7 @@
 {
   "name": "cmp9134-2526-backend",
-  "version": "0.0.1",
-  "description": "Robot management API — Node.js / Express backend",
+  "version": "0.0.2",
+  "description": "Robot management API — Node.js / Express + MongoDB",
   "private": true,
   "type": "commonjs",
   "main": "dist/server.js",
@@ -19,11 +19,7 @@
     "express": "^4.21.1",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.13.1",
-    "pg-hstore": "^2.3.4",
-    "reflect-metadata": "^0.2.2",
-    "sequelize": "^6.37.4",
-    "umzug": "^3.8.2",
+    "mongoose": "^8.8.3",
     "uuid": "^11.0.3",
     "ws": "^8.18.0",
     "zod": "^3.23.8"

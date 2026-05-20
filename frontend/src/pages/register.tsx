@@ -103,13 +103,18 @@ export function Register() {
         {/* Card - extra top padding for space before form */}
         <div className="auth-card rounded-2xl" style={{ paddingTop: '2rem', paddingBottom: '1.75rem', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}>
 
-          <div className="flex items-center gap-3 mb-7">
+          <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-border/60" />
             <span className="text-[10px] tracking-[0.15em] uppercase text-muted/60">
               New Operator
             </span>
             <div className="flex-1 h-px bg-border/60" />
           </div>
+
+          <p className="text-center text-xs text-muted/70 mb-6 leading-relaxed">
+            New accounts start as <span className="text-accent font-semibold">VIEWER</span>.
+            Ask a COMMANDER to promote you for control access.
+          </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5" style={{ paddingBottom: '1.25rem' }}>
             <Field id="fullName" label="Full Name" placeholder="Jane Smith"

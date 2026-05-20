@@ -1,85 +1,49 @@
-import {
-  DataTypes,
-  Model,
-  type InferAttributes,
-  type InferCreationAttributes,
-  type CreationOptional,
-} from 'sequelize';
-import { sequelize } from '../sequelize';
+import { Schema, model, type HydratedDocument, type Model, type Types } from 'mongoose';
 
 export type RoleEnum = 'VIEWER' | 'COMMANDER';
 
-export class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
-  declare id: CreationOptional<string>;
-  declare email: string;
-  declare full_name: string | null;
-  declare password: string;
-  declare is_super_admin: CreationOptional<boolean>;
-  declare is_active: CreationOptional<boolean>;
-  declare last_login: Date | null;
-  declare role: CreationOptional<RoleEnum>;
-  declare created_at: CreationOptional<Date>;
-  declare updated_at: CreationOptional<Date>;
+export interface UserDoc {
+  email: string;
+  full_name: string | null;
+  password: string;
+  is_super_admin: boolean;
+  is_active: boolean;
+  last_login: Date | null;
+  role: RoleEnum;
+  created_at: Date;
+  updated_at: Date;
 }
 
-User.init(
+export type UserHydrated = HydratedDocument<UserDoc> & { _id: Types.ObjectId };
+
+const userSchema = new Schema<UserDoc, Model<UserDoc>>(
   {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    full_name: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    is_super_admin: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    is_active: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: true,
-    },
-    last_login: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    role: {
-      // backed by the Postgres enum `roleenum`
-      type: DataTypes.ENUM('VIEWER', 'COMMANDER'),
-      allowNull: false,
-      defaultValue: 'VIEWER',
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
+    full_name: { type: String, default: null },
+    password: { type: String, required: true },
+    is_super_admin: { type: Boolean, required: true, default: false },
+    is_active: { type: Boolean, required: true, default: true },
+    last_login: { type: Date, default: null },
+    role: { type: String, enum: ['VIEWER', 'COMMANDER'], required: true, default: 'VIEWER' },
   },
   {
-    sequelize,
-    tableName: 'user',
-    modelName: 'User',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
-    indexes: [{ unique: true, fields: ['email'], name: 'ix_user_email' }],
+    collection: 'users',
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    toJSON: {
+      virtuals: true,
+      versionKey: false,
+      transform(_doc, ret) {
+        // Strip the password hash from any JSON serialisation.
+        (ret as Record<string, unknown>).password = undefined;
+        delete (ret as Record<string, unknown>).password;
+      },
+    },
+    toObject: { virtuals: true, versionKey: false },
   },
 );
+
+userSchema.virtual('id').get(function (this: UserDoc & { _id: Types.ObjectId }) {
+  return this._id.toString();
+});
+
+export const User = model<UserDoc>('User', userSchema);

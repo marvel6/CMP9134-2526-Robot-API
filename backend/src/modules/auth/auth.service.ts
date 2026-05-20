@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { User } from '../../db/models/User';
+import { User, type UserHydrated } from '../../db/models/User';
 import {
   BadRequestException,
   UnauthorizedException,
@@ -24,8 +24,13 @@ export interface LoginInput {
   password: string;
 }
 
+function normaliseEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 export async function register(input: RegisterInput): Promise<TokenSchema> {
-  const existing = await User.findOne({ where: { email: input.email } });
+  const email = normaliseEmail(input.email);
+  const existing = await User.findOne({ email });
   if (existing) {
     throw new BadRequestException('Email already taken');
   }
@@ -34,20 +39,22 @@ export async function register(input: RegisterInput): Promise<TokenSchema> {
 
   const user = await User.create({
     full_name: input.full_name,
-    email: input.email,
+    email,
     password: hashed,
     is_super_admin: false,
     is_active: true,
     last_login: null,
+    role: 'VIEWER',
   });
 
-  return generateAuthTokens(user.id);
+  return generateAuthTokens(user._id.toString());
 }
 
 export async function login(input: LoginInput): Promise<TokenSchema> {
-  const user = await User.findOne({ where: { email: input.email } });
+  const email = normaliseEmail(input.email);
+  const user = await User.findOne({ email });
   if (!user) {
-    throw new BadRequestException('incorrect email or password');
+    throw new BadRequestException('Incorrect email or password');
   }
 
   const ok = bcrypt.compareSync(input.password, user.password);
@@ -55,12 +62,16 @@ export async function login(input: LoginInput): Promise<TokenSchema> {
     throw new UnauthorizedException('Incorrect email or password');
   }
 
-  const tokens = await generateAuthTokens(user.id);
+  if (!user.is_active) {
+    throw new UnauthorizedException('Account is disabled');
+  }
+
+  const tokens = await generateAuthTokens(user._id.toString());
 
   user.last_login = new Date();
   await user.save();
 
-  await createAuditLog(user.id, { action: 'LOGIN' });
+  await createAuditLog(user._id.toString(), { action: 'LOGIN' });
 
   return tokens;
 }
@@ -85,9 +96,9 @@ export interface SessionResponse {
   role: string;
 }
 
-export function buildSessionResponse(user: User): SessionResponse {
+export function buildSessionResponse(user: UserHydrated): SessionResponse {
   return {
-    id: user.id,
+    id: user._id.toString(),
     full_name: user.full_name,
     email: user.email,
     role: user.role,

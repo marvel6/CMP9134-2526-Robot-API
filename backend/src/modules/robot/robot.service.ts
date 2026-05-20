@@ -3,10 +3,10 @@ import { config } from '../../config';
 import { getRedis } from '../../cache/redis';
 import { cacheDelete } from '../../cache/cache';
 import {
-  BadRequestException,
+  ForbiddenException,
   ServiceUnavailableException,
 } from '../../common/exceptions';
-import type { User } from '../../db/models/User';
+import type { UserHydrated } from '../../db/models/User';
 import { createAuditLog } from '../audit-log/auditLog.service';
 
 export type NavigationEnum = 'LEFT' | 'RIGHT' | 'UP' | 'DOWN';
@@ -45,15 +45,17 @@ function isServerError(err: unknown): boolean {
   return err instanceof AxiosError && (err.response?.status ?? 0) >= 500;
 }
 
-export async function moveRobot(user: User, navigation: NavigationEnum): Promise<void> {
-  if (user.role === 'VIEWER') {
-    throw new BadRequestException("Viewer's cannot move robot");
+export async function moveRobot(user: UserHydrated, navigation: NavigationEnum): Promise<void> {
+  if (user.role !== 'COMMANDER') {
+    throw new ForbiddenException('Only COMMANDER role can move the robot');
   }
 
   const redis = getRedis();
-  const locked = await acquireRedisLock('redis-robot-lock', user.id);
+  const locked = await acquireRedisLock('redis-robot-lock', user._id.toString());
   if (!locked) {
-    throw new BadRequestException('Robot is currently being operated, try again shortly');
+    throw new ServiceUnavailableException(
+      'Robot is currently being operated, try again shortly',
+    );
   }
 
   try {
@@ -79,21 +81,23 @@ export async function moveRobot(user: User, navigation: NavigationEnum): Promise
 
   await redis.del('redis-robot-lock');
 
-  await createAuditLog(user.id, {
+  await createAuditLog(user._id.toString(), {
     action: 'COMMAND',
     navigation_direction: navigation,
   });
 }
 
-export async function resetRobot(user: User): Promise<void> {
-  if (user.role === 'VIEWER') {
-    throw new BadRequestException("Viewer's cannot reset robot");
+export async function resetRobot(user: UserHydrated): Promise<void> {
+  if (user.role !== 'COMMANDER') {
+    throw new ForbiddenException('Only COMMANDER role can reset the robot');
   }
 
   const redis = getRedis();
-  const locked = await acquireRedisLock('redis-robot-reset-lock', user.id);
+  const locked = await acquireRedisLock('redis-robot-reset-lock', user._id.toString());
   if (!locked) {
-    throw new BadRequestException('Robot is currently being reset, try again shortly');
+    throw new ServiceUnavailableException(
+      'Robot is currently being reset, try again shortly',
+    );
   }
 
   try {
@@ -113,7 +117,7 @@ export async function resetRobot(user: User): Promise<void> {
   await cacheDelete('map_data');
   await redis.del('redis-robot-reset-lock');
 
-  await createAuditLog(user.id, {
+  await createAuditLog(user._id.toString(), {
     action: 'RESET_ROBOT',
     navigation_direction: null,
   });

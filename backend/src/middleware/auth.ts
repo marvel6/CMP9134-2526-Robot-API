@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
-import { User } from '../db/models/User';
+import { isValidObjectId } from 'mongoose';
+import { User, type UserHydrated } from '../db/models/User';
 import {
   ForbiddenException,
   TokenError,
@@ -9,7 +10,7 @@ import { decodeToken } from '../token/tokens';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: User;
+    user?: UserHydrated;
   }
 }
 
@@ -37,7 +38,11 @@ export const authBearer: RequestHandler = async (
       throw new TokenError('Refresh token is not allowed to access the protected resources');
     }
 
-    const user = await User.findByPk(claims.sub);
+    if (!isValidObjectId(claims.sub)) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const user = await User.findById(claims.sub);
     if (!user || !user.is_active) {
       throw new UnauthorizedException('Invalid token');
     }
@@ -55,7 +60,7 @@ export const requirePermission: RequestHandler = (req, _res, next) => {
     return next(new UnauthorizedException('Missing bearer token'));
   }
   if (user.role !== 'COMMANDER') {
-    return next(new ForbiddenException('Forbidden'));
+    return next(new ForbiddenException('Forbidden: COMMANDER role required'));
   }
   next();
 };

@@ -1,73 +1,35 @@
-import {
-  DataTypes,
-  Model,
-  type InferAttributes,
-  type InferCreationAttributes,
-  type CreationOptional,
-} from 'sequelize';
-import { sequelize } from '../sequelize';
-import { User } from './User';
+import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 
-export class RefreshToken extends Model<
-  InferAttributes<RefreshToken>,
-  InferCreationAttributes<RefreshToken>
-> {
-  declare id: CreationOptional<string>;
-  declare token: string;
-  declare expires_at: Date;
-  declare is_blacklisted: CreationOptional<boolean>;
-  declare user_id: string | null;
-  declare created_at: CreationOptional<Date>;
-  declare updated_at: CreationOptional<Date>;
+export interface RefreshTokenDoc {
+  token: string;
+  expires_at: Date;
+  is_blacklisted: boolean;
+  user_id: Types.ObjectId;
+  created_at: Date;
+  updated_at: Date;
 }
 
-RefreshToken.init(
+export type RefreshTokenHydrated = HydratedDocument<RefreshTokenDoc>;
+
+const refreshTokenSchema = new Schema<RefreshTokenDoc>(
   {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
-    token: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    expires_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    is_blacklisted: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    user_id: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: { model: 'user', key: 'id' },
-      onDelete: 'CASCADE',
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
+    token: { type: String, required: true, unique: true },
+    expires_at: { type: Date, required: true, index: true },
+    is_blacklisted: { type: Boolean, required: true, default: false },
+    user_id: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   },
   {
-    sequelize,
-    tableName: 'refreshtoken',
-    modelName: 'RefreshToken',
-    timestamps: true,
-    createdAt: 'created_at',
-    updatedAt: 'updated_at',
+    collection: 'refresh_tokens',
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+    toJSON: { virtuals: true, versionKey: false },
+    toObject: { virtuals: true, versionKey: false },
   },
 );
 
-User.hasMany(RefreshToken, { foreignKey: 'user_id', as: 'refresh_tokens', onDelete: 'CASCADE' });
-RefreshToken.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+refreshTokenSchema.virtual('id').get(function (
+  this: RefreshTokenDoc & { _id: Types.ObjectId },
+) {
+  return this._id.toString();
+});
+
+export const RefreshToken = model<RefreshTokenDoc>('RefreshToken', refreshTokenSchema);
