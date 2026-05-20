@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loginV1 } from '../api/v1'
 import { useAuth } from '../context/AuthContext'
+import { APP_FOOTER, APP_NAME, APP_TAGLINE } from '../config/brand'
 
 function RadarVisual() {
   return (
@@ -126,8 +127,8 @@ export function Login() {
             </svg>
           </span>
           <div>
-            <p className="text-white font-semibold tracking-tight">RoboControl</p>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted/70">Mission Control</p>
+            <p className="text-white font-semibold tracking-tight">{APP_NAME}</p>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-muted/70">{APP_TAGLINE}</p>
           </div>
         </header>
 
@@ -146,9 +147,7 @@ export function Login() {
             <StatusLine label="Telemetry"       value="streaming"           dot="live" />
             <StatusLine label="Last commander"  value="—"                   dot="idle" />
           </div>
-          <p className="mt-6 text-[10px] tracking-[0.22em] uppercase text-muted/30">
-            CMP9134 · v1.0
-          </p>
+          <p className="mt-6 text-[10px] tracking-[0.22em] uppercase text-muted/30">{APP_FOOTER}</p>
         </footer>
       </aside>
 
@@ -165,8 +164,8 @@ export function Login() {
               </svg>
             </span>
             <div>
-              <p className="text-white font-semibold tracking-tight">RoboControl</p>
-              <p className="text-[10px] uppercase tracking-[0.25em] text-muted/70">Mission Control</p>
+              <p className="text-white font-semibold tracking-tight">{APP_NAME}</p>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-muted/70">{APP_TAGLINE}</p>
             </div>
           </div>
 

@@ -154,6 +154,46 @@ passes in `frontend/`. `ReadLints` clean on touched files. Default commander
 credentials match between `docker-compose.yaml` env, `.env.example`, and the
 hint shown in the UI.
 
+### Entry 13
+**Task Category:** Dashboard UI — map redesign, telemetry bar, viewport layout
+**AI tool / model:** Cursor in-editor agent (Composer)
+**Prompt summary:** Redesign the robot grid and robot icon; add a sticky telemetry
+bar for battery and idle/status; fit the whole dashboard on one screen without
+scrolling so the navigator is always reachable; remove an unwanted bottom nav
+overlay; rebuild Docker frontend so changes appear in the browser.
+**Why:** The operator could not see UI updates without rebuilding the frontend
+image (stale Docker layer). The map and controls did not match the new light
+dashboard. Scrolling was required to reach the d-pad in the side panel. A
+temporary mobile bottom nav dock duplicated navigation already in the Controls
+rail.
+**Outcome:** Accepted (with revisions below).
+- **Map grid:** Replaced the light tiled arena with a dark blueprint-style board
+  (`.map-board`, `.map-tile`). Obstacles are solid wall blocks; the robot uses a
+  top-down rover SVG (body, wheels, heading arrow) instead of a star marker.
+  Legend labels: Open / Wall / Unit; robot coordinates shown above the grid.
+- **Telemetry bar:** New `TelemetryBar.tsx` under the header — Battery, Status
+  (Idle/Moving/etc.), Lidar (Active/Idle), Link (Live/Offline). Shown on all
+  breakpoints in one compact row.
+- **Viewport layout:** `dashboard-shell` locked to `100dvh` with `overflow:
+  hidden`. Map stage uses container sizing so the grid shrinks to available
+  space. Control panel uses a CSS grid (`control-panel`) so Navigation stays at
+  the bottom of the right rail on desktop; duplicate telemetry block removed
+  from `ControlPanel.tsx`.
+- **Mobile navigation:** Briefly added a fixed bottom d-pad dock for
+  commanders; **removed** after feedback — navigation lives only in the Controls
+  drawer (mobile) or right rail (desktop), not as a bottom overlay on the map.
+- **Docker / caching:** Rebuilt `frontend` with `docker compose build
+  --no-cache frontend`. Updated `frontend/default.conf.template` so
+  `index.html` is not long-cached while hashed `/assets/*` stay immutable.
+**Files touched:** `frontend/src/components/dashboard/MapGrid.tsx`,
+`TelemetryBar.tsx`, `ControlPanel.tsx`, `NavDpad.tsx` (optional `compact`
+size), `frontend/src/pages/dashboard.tsx`, `frontend/src/index.css`,
+`frontend/default.conf.template`.
+**Verified:** `npm run build` passes in `frontend/`. Docker image rebuilt and
+container recreated; served bundle includes `map-board` classes and
+`TelemetryBar`. Operator should hard-refresh `http://localhost:8080` after
+rebuild.
+
 ## Notes
 - The original FastAPI service in `app/` and its supporting Python files
   (`migrations/`, `settings/`, `tests/`, `alembic.ini`, `pyproject.toml`,
