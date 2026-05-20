@@ -67,6 +67,16 @@ DEFAULT_COMMANDER_EMAIL=commander@robocontrol.local
 DEFAULT_COMMANDER_PASSWORD=commander123
 ```
 
+## Tests (Jest)
+
+Uses an in-memory MongoDB (`mongodb-memory-server`) and Supertest against the
+Express app. Redis and the robot HTTP API are mocked in robot route tests.
+
+```bash
+npm test
+npm run test:coverage
+```
+
 ## Production build
 
 ```bash

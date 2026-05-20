@@ -1,9 +1,34 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { APP_NAME } from '../config/brand'
 import { getAuditLogsV1, type AuditLogDataV1, type AuditLogEntryV1 } from '../api/v1'
 
 const PER_PAGE = 10
+
+function actionBadgeClass(action: string): string {
+  switch (action) {
+    case 'LOGIN':
+      return 'audit-badge audit-badge--login'
+    case 'COMMAND':
+      return 'audit-badge audit-badge--command'
+    case 'RESET_ROBOT':
+      return 'audit-badge audit-badge--reset'
+    default:
+      return 'audit-badge'
+  }
+}
+
+function formatWhen(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  } catch {
+    return iso
+  }
+}
 
 export function AuditLog() {
   const navigate = useNavigate()
@@ -40,99 +65,114 @@ export function AuditLog() {
   const results = data?.results ?? []
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg">
-      <header className="fixed top-0 left-0 right-0 z-10 h-14 flex items-center justify-between gap-5 px-6 bg-card/95 backdrop-blur-sm border-b border-white/5">
-        <div className="flex items-center gap-4">
-          <Link
-            to="/dashboard"
-            className="text-sm font-medium text-muted hover:text-white transition-colors"
-          >
+    <div className="audit-page">
+      <header className="audit-header">
+        <div className="audit-header__lead">
+          <Link to="/dashboard" className="audit-back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             Dashboard
           </Link>
-          <span className="text-muted">·</span>
-          <span className="text-sm font-medium text-white">Audit log</span>
+          <div>
+            <p className="audit-eyebrow">{APP_NAME}</p>
+            <h1 className="audit-title">Audit log</h1>
+            <p className="audit-subtitle">Commander activity across login, movement, and resets</p>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <p className="text-sm font-medium text-white">{user?.full_name ?? 'User'}</p>
-          <span className="text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-accent/10 text-accent/90 font-semibold border border-accent/20">
-            {user?.role ?? 'VIEWER'}
-          </span>
+
+        <div className="audit-header__actions">
+          <div className="audit-user-chip">
+            <span className="audit-user-chip__name">{user?.full_name ?? 'Operator'}</span>
+            <span className="audit-user-chip__role">{user?.role ?? 'COMMANDER'}</span>
+          </div>
+          <button type="button" className="dash-btn dash-btn--ghost dash-btn--sm" onClick={() => logout()}>
+            Log out
+          </button>
         </div>
-        <button
-          type="button"
-          className="py-2.5 px-5 text-sm font-medium text-muted bg-white/[0.04] border border-white/10 rounded-lg cursor-pointer transition-all hover:bg-[rgba(255,71,87,0.12)] hover:text-danger hover:border-danger/30"
-          onClick={() => logout()}
-        >
-          Logout
-        </button>
       </header>
 
-      <main className="flex-1 px-6 pb-6 w-full flex flex-col items-center" style={{ marginTop: '6rem' }}>
-        <div className="w-full max-w-4xl">
-        <h1 className="text-xl font-bold text-white mb-4">Audit logs</h1>
-
-        {error && (
-          <p className="text-sm text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2 mb-4">
-            {error}
-          </p>
-        )}
-
-        {loading ? (
-          <p className="text-muted text-sm">Loading…</p>
-        ) : (
-          <>
-            <div className="rounded-xl border border-white/10 bg-card/50 overflow-hidden">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 bg-white/[0.04]">
-                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-muted font-semibold">Time</th>
-                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-muted font-semibold">Action</th>
-                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-muted font-semibold">Direction</th>
-                    <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-muted font-semibold">User</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((entry: AuditLogEntryV1) => (
-                    <tr key={entry.id} className="border-b border-white/5 hover:bg-white/[0.03]">
-                      <td className="px-4 py-3 text-white font-mono text-xs">{entry.created_at}</td>
-                      <td className="px-4 py-3 text-white">{entry.action}</td>
-                      <td className="px-4 py-3 text-muted">{entry.navigation_direction ?? '—'}</td>
-                      <td className="px-4 py-3 text-muted text-xs truncate max-w-[160px]" title={entry.user_id}>
-                        {entry.user?.full_name ?? entry.user_id.slice(0, 8) + '…'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <main className="audit-main">
+        <div className="audit-panel">
+          {error && (
+            <div className="audit-alert" role="alert">
+              {error}
             </div>
+          )}
 
-            {meta && (meta.last_page > 1 || meta.current_page > 1) && (
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-xs text-muted">
-                  Page {meta.current_page} of {meta.last_page} · {meta.total} total
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={meta.prev == null}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg border border-white/10 bg-white/[0.04] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/[0.08]"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    disabled={meta.next == null}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg border border-white/10 bg-white/[0.04] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/[0.08]"
-                  >
-                    Next
-                  </button>
-                </div>
+          {loading ? (
+            <div className="audit-loading">
+              <div className="audit-loading__spinner" />
+              <span>Loading entries…</span>
+            </div>
+          ) : results.length === 0 ? (
+            <div className="audit-empty">
+              <p>No audit entries yet.</p>
+              <p className="audit-empty__hint">Actions appear here after logins, moves, or resets.</p>
+            </div>
+          ) : (
+            <>
+              <div className="audit-table-wrap">
+                <table className="audit-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Action</th>
+                      <th>Direction</th>
+                      <th>Operator</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map((entry: AuditLogEntryV1) => (
+                      <tr key={entry.id}>
+                        <td className="audit-table__time">{formatWhen(entry.created_at)}</td>
+                        <td>
+                          <span className={actionBadgeClass(entry.action)}>{entry.action}</span>
+                        </td>
+                        <td className="audit-table__muted">
+                          {entry.navigation_direction ?? '—'}
+                        </td>
+                        <td className="audit-table__user">
+                          <span className="audit-table__name">
+                            {entry.user?.full_name ?? 'Unknown'}
+                          </span>
+                          <span className="audit-table__id" title={entry.user_id}>
+                            {entry.user_id.slice(0, 8)}…
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </>
-        )}
+
+              {meta && (
+                <footer className="audit-pagination">
+                  <p className="audit-pagination__info">
+                    Page {meta.current_page} of {meta.last_page} · {meta.total} entries
+                  </p>
+                  <div className="audit-pagination__controls">
+                    <button
+                      type="button"
+                      disabled={meta.prev == null}
+                      onClick={() => setPage((p) => p - 1)}
+                      className="dash-btn dash-btn--secondary dash-btn--sm"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={meta.next == null}
+                      onClick={() => setPage((p) => p + 1)}
+                      className="dash-btn dash-btn--primary dash-btn--sm"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </footer>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>
